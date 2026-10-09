@@ -1,0 +1,5 @@
+# Lista de rutas de paneles de administración (recurso propio del proyecto)
+# Una ruta por línea. Placeholder didáctico — se poblará en vídeos posteriores.
+admin/
+administrator/
+login/
