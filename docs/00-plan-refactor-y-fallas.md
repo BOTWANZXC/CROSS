@@ -73,6 +73,50 @@ qué orden lo arreglamos. Cada fase = un vídeo (o módulo de clase).
 - **Fase 8 — Reporte estructurado**: salida JSON/CSV además de texto.
 - **Fase 9 — Tests + CI + docs**: `bats`, GitHub Actions, README.
 
-> Pendiente: el fragmento recibido corta en la línea 439 (dentro de `regex_check`).
-> Al recibir el código completo se revisará el `case` de clasificación, los módulos
-> `digger_recon`, `bing_geo_dorker`, `analyze_type` y el bloque final.
+---
+
+## Hallazgos del código completo (análisis estático sobre las 845 líneas)
+
+Bugs reales adicionales que solo se ven con el script entero:
+
+1. **Reporte mentiroso por copy-paste** (536–537, 572–573): imprime `$sqlicount`
+   para las categorías LFI y Blind (deberían ser `$lficount` y `$possibles`).
+2. **Lógica de `FAIL` rota** (424–468): `FAIL` se reasigna en cada iteración, así
+   que al final solo refleja la ÚLTIMA firma, no si hubo algún match.
+3. **Rama `case` muerta** (446–448): `"include_path"` no existe en el array
+   `SQLiREGEX` → nunca se alcanza.
+4. **Variable fantasma** (697): usa `$TARGET` donde la variable real es
+   `$SHAREDTARGET`.
+5. **Comparación numérica como string** (331): `[ "$zz" \< 16 ]` compara en ASCII,
+   no numéricamente.
+6. **Fuga de temporales**: la limpieza final (832–836) olvida `$STORAGE4` y
+   `$STORAGE5`.
+7. **Blacklist triplicada y divergente** (205, 716, 772): viola DRY; `sourceforge.net`
+   solo aparece en dos de las tres copias.
+
+**Corrección al análisis previo:** los contadores `z`/`i` de `regex_check` SÍ están
+sincronizados (no es un bug, solo código redundante). Lección: verifica antes de
+afirmar, incluso en una auditoría.
+
+---
+
+## Alcance del proyecto: dónde está la línea (nota de ética del canal)
+
+Visto el tool completo, su arquitectura es **descubrimiento masivo e indiscriminado
+de objetivos** (dorking a buscadores) + **test automático de inyección** (`curl_magic`
+/ `injector_tester_core`) contra sitios de terceros sin autorización ni alcance.
+
+Decisión de proyecto, coherente con el enfoque de hacking ético del canal:
+
+- ✅ **Sí trabajamos** (educativo/defensivo): análisis de código y bugs, higiene de
+  Bash (Fases 0–2), explicación *conceptual* de cómo la detección por regex de
+  errores funciona y **cómo defenderse** (desactivar errores verbosos, WAF, etc.).
+- 🧪 **Demo en laboratorio propio**: reproducir los conceptos contra un objetivo
+  intencionadamente vulnerable y local que controlemos (p. ej. DVWA/bWAPP en Docker),
+  nunca contra Internet abierto.
+- ⛔ **No reconstruimos** el motor funcional de dorking masivo ni el de inyección
+  automatizada contra objetivos arbitrarios: un "mass scanner" sin alcance no se
+  vuelve ético por refactorizarlo; una versión limpia y funcional es *más* dañina.
+
+Esto no limita la serie — la hace mejor: el contraste "por qué este diseño es
+irresponsable" ES la clase de ética más valiosa del canal.
